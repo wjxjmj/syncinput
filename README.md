@@ -12,3 +12,4 @@
 - 图钉图标 by Ant design on [Icon-Icons.com](https://icon-icons.com/zh/authors/1350-ant-design)
 - 月亮图标：天气预报 月 晚的天空图标 by icon lauk on [Icon-Icons.com](https://icon-icons.com/zh/authors/671-icon-lauk)
 - 太阳图标：天气预报 热的太阳 天图标 by icon lauk on [Icon-Icons.com](https://icon-icons.com/zh/authors/671-icon-lauk)
+- 聊天图标：气囊 聊天室 对话 讲话图标 by Icon-Icons (Carlos) on [Icon-Icons.com](https://icon-icons.com/zh/authors/115-icon-icons-carlos)

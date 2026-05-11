@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 
+use fs2::FileExt;
 use std::net::{TcpStream, UdpSocket};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -24,9 +25,8 @@ use tao::platform::windows::WindowExtWindows;
 use tao::window::WindowBuilder;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::sync::RwLock;
-use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem};
+use tray_icon::menu::{ContextMenu, Menu, MenuEvent, MenuId, MenuItem};
 use tray_icon::{Icon as TrayIcon, MouseButton, TrayIconBuilder, TrayIconEvent};
-use muda::ContextMenu;
 use arboard::Clipboard;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -117,14 +117,6 @@ struct AppState {
 }
 
 impl AppState {
-    async fn broadcast_content(&self, sender_id: u64, text: &str) {
-        let msg = json!({"type": "content", "data": text}).to_string();
-        let clients = self.clients.read().await;
-        for c in clients.iter().filter(|c| c.id != sender_id) {
-            let _ = c.tx.send(msg.clone());
-        }
-    }
-
     async fn broadcast_all(&self, msg: String) {
         let clients = self.clients.read().await;
         for c in clients.iter() {
@@ -201,9 +193,20 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if let Some(data) = parsed["data"].as_str() {
+                            let msg_type = parsed["type"].as_str().unwrap_or("content");
+                            if msg_type == "mode" {
+                                // broadcast mode change to all OTHER clients
+                                let clients = state.clients.read().await;
+                                for c in clients.iter().filter(|c| c.id != my_id) {
+                                    let _ = c.tx.send(text.to_string());
+                                }
+                            } else if let Some(data) = parsed["data"].as_str() {
                                 *state.content.write().await = data.to_string();
-                                state.broadcast_content(my_id, data).await;
+                                let msg = json!({"type": msg_type, "data": data}).to_string();
+                                let clients = state.clients.read().await;
+                                for c in clients.iter().filter(|c| c.id != my_id) {
+                                    let _ = c.tx.send(msg.clone());
+                                }
                             }
                         }
                     }
@@ -269,6 +272,18 @@ fn local_ip() -> String {
 }
 
 fn main() {
+    // single-instance guard
+    let lock_dir = std::env::var("APPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("."))
+        .join("syncinput");
+    let _ = std::fs::create_dir_all(&lock_dir);
+    let lock_file = std::fs::File::create(lock_dir.join(".lock"))
+        .and_then(|f| f.try_lock_exclusive().map(|()| f));
+    if lock_file.is_err() {
+        std::process::exit(0);
+    }
+
     std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(run_server());

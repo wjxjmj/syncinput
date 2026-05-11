@@ -164,6 +164,51 @@
     padding: 0 8px;
   }
 
+  #btn-chat.on { color: var(--accent); }
+
+  #chat-area {
+    display: none; flex: 1; overflow-y: auto;
+    padding: 10px 12px;
+  }
+  #input-wrap { display: flex; flex-direction: column; flex: 1; }
+  #btn-send { display: none; }
+  .chat-mode #chat-area { display: block; }
+  .chat-mode #input-wrap {
+    flex: none; flex-direction: row; align-items: flex-end; gap: 6px;
+    padding: 6px 8px; border-top: 1px solid var(--btn-hover);
+  }
+  .chat-mode #editor {
+    flex: 1; height: auto; min-height: 34px; max-height: 80px;
+    padding: 6px 12px; border-radius: 8px;
+    background: var(--btn-hover); overflow-y: auto;
+    border: none; font-size: 14px;
+  }
+  .chat-mode #btn-send {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0;
+    border: none; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .chat-mode #btn-send:hover { opacity: 0.8; }
+
+  .bubble {
+    max-width: 80%; margin-bottom: 8px; padding: 8px 12px;
+    border-radius: 12px; font-size: 14px; line-height: 1.5;
+    word-break: break-word; white-space: pre-wrap;
+  }
+  .bubble.left {
+    background: var(--btn-hover); color: var(--text);
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.right {
+    background: color-mix(in srgb, var(--accent) 55%, white); color: #fff;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble img { max-width: 100%; border-radius: 4px; }
+
   #editor {
     width: 100%; flex: 1;
     padding: 16px;
@@ -220,12 +265,20 @@
     <button class="win-btn pin-on" id="btn-pin" title="取消置顶">
       <svg width="14" height="15" viewBox="0 0 1024 1024"><path fill="currentColor" d="M878.3 392.1L631.9 145.7c-6.5-6.5-15-9.7-23.5-9.7s-17 3.2-23.5 9.7L423.8 306.9c-12.2-1.4-24.5-2-36.8-2-73.2 0-146.4 24.1-206.5 72.3a33.23 33.23 0 0 0-2.7 49.4l181.7 181.7-215.4 215.2a15.8 15.8 0 0 0-4.6 9.8l-3.4 37.2c-.9 9.4 6.6 17.4 15.9 17.4.5 0 1 0 1.5-.1l37.2-3.4c3.7-.3 7.2-2 9.8-4.6l215.4-215.4 181.7 181.7c6.5 6.5 15 9.7 23.5 9.7 9.7 0 19.3-4.2 25.9-12.4 56.3-70.3 79.7-158.3 70.2-243.4l161.1-161.1c12.9-12.8 12.9-33.8 0-46.8zM666.2 549.3l-24.5 24.5 3.8 34.4a259.92 259.92 0 0 1-30.4 153.9L262 408.8c12.9-7.1 26.3-13.1 40.3-17.9 27.2-9.4 55.7-14.1 84.7-14.1 9.6 0 19.3.5 28.9 1.6l34.4 3.8 24.5-24.5L608.5 224 800 415.5 666.2 549.3z"/></svg>
     </button>
-    <button class="win-btn" id="btn-min" title="最小化">━</button>
+    <button class="win-btn" id="btn-chat" title="聊天模式">
+      <svg width="13" height="13" viewBox="0 0 32 32"><path fill="currentColor" d="M24 22a1 1 0 01-.64-.23L18.84 18H17a8 8 0 010-16h6a8 8 0 012 15.74V21a1 1 0 01-.58.91A1 1 0 0124 22zM17 4a6 6 0 000 12h2.2a1 1 0 01.64.23L23 18.86V16.92a1 1 0 01.86-1A6 6 0 0023 4z"/><rect fill="currentColor" width="2" height="2" x="19" y="9"/><rect fill="currentColor" width="2" height="2" x="14" y="9"/><rect fill="currentColor" width="2" height="2" x="24" y="9"/><path fill="currentColor" d="M8 30a1 1 0 01-.42-.09A1 1 0 017 29v-3.26a8 8 0 01-1.28-15 1 1 0 01.82 1.82 6 6 0 001.6 11.4 1 1 0 01.86 1v1.94l3.16-2.63A1 1 0 0112.8 24H15a5.94 5.94 0 004.29-1.82 1 1 0 011.44 1.4A8 8 0 0115 26h-1.84L8.64 29.77A1 1 0 018 30z"/></svg>
+    </button>
     <button class="win-btn" id="btn-max" title="最大化">☐</button>
     <button class="win-btn win-close" id="btn-close" title="关闭">✕</button>
   </div>
 </div>
-<div id="editor" contenteditable="true"></div>
+<div id="chat-area"></div>
+<div id="input-wrap">
+  <div id="editor" contenteditable="true"></div>
+  <button id="btn-send" title="发送" onclick="sendChat()">
+    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+  </button>
+</div>
 <div class="footer">
   <div style="position: relative;">
     <button id="menu-btn" title="设置">☰</button>
@@ -633,7 +686,65 @@ btnPin.onclick = () => {
   btnPin.title = on ? "取消置顶" : "置顶";
   sendIpc("pin");
 };
-document.getElementById("btn-min").onclick = () => sendIpc("min");
+// chat mode
+let chatMode = false;
+const chatArea = document.getElementById("chat-area");
+const btnChat = document.getElementById("btn-chat");
+
+function setChatMode(on) {
+  chatMode = on;
+  if (on) {
+    document.body.classList.add("chat-mode");
+    btnChat.classList.add("on");
+    btnChat.title = "退出聊天模式";
+  } else {
+    document.body.classList.remove("chat-mode");
+    btnChat.classList.remove("on");
+    chatArea.innerHTML = "";
+    btnChat.title = "聊天模式";
+  }
+}
+
+btnChat.onclick = () => {
+  const next = !chatMode;
+  setChatMode(next);
+  const msg = JSON.stringify({ type: "mode", mode: next ? "chat" : "sync" });
+  console.log("[send mode]", msg);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(msg);
+  }
+};
+
+function addBubble(text, side) {
+  if (!chatMode || !text.trim()) return;
+  const div = document.createElement("div");
+  div.className = `bubble ${side}`;
+  div.innerHTML = text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function sendChat() {
+  const text = editor.innerHTML.trim();
+  if (!text || text === "<br>") return;
+  addBubble(text, "right");
+  sendIpc(`copy:${editor.textContent.trim()}`);
+  copyToClipboard(editor.textContent.trim());
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "chat", data: text }));
+  }
+  editor.innerHTML = "";
+}
+
+// Enter to send in chat mode, Shift+Enter for newline
+editor.addEventListener("keydown", e => {
+  if (!chatMode) return;
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+});
+
 document.getElementById("btn-max").onclick = () => sendIpc("max");
 document.getElementById("btn-close").onclick = () => sendIpc("close");
 
@@ -669,11 +780,16 @@ function connect() {
 
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
-    if (msg.type === "content") {
+    if (msg.type === "content" && !chatMode) {
       syncing = true;
       editor.innerHTML = msg.data;
       syncing = false;
       autoCopyState();
+    } else if (msg.type === "chat" && chatMode) {
+      addBubble(msg.data, "left");
+    } else if (msg.type === "mode") {
+      console.log("[mode]", msg.mode);
+      setChatMode(msg.mode === "chat");
     } else if (msg.type === "clients") {
       if (msg.count >= 2) {
         dotPhone.className = "dot on";
@@ -701,7 +817,7 @@ function sendSync() {
 }
 
 editor.addEventListener("keyup", () => {
-  if (syncing) return;
+  if (syncing || chatMode) return;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(sendSync, 200);
   autoCopyState();
