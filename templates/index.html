@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SyncInput</title>
+<style>
+  :root {
+    --body-bg: #000;
+    --status-bg: #0a0a0a;
+    --editor-bg: #000;
+    --text: #e0e0e0;
+    --text-muted: #555;
+    --status-color: #ff8c00;
+    --dot-off: #444;
+    --dot-on: #4ecca3;
+    --btn-hover: #1a1a1a;
+    --bar-hover: #1a1a1a;
+  }
+  .light {
+    --body-bg: #f0f0f5;
+    --status-bg: #e0e0e8;
+    --editor-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #aaa;
+    --status-color: #999;
+    --dot-off: #bbb;
+    --dot-on: #4ecca3;
+    --btn-hover: #ccc;
+    --bar-hover: #d4d4dc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--body-bg);
+    display: flex; flex-direction: column;
+    color: var(--text); transition: background 0.3s, color 0.3s;
+  }
+
+  /* custom title bar */
+  .title-bar {
+    display: flex; align-items: center;
+    height: 32px;
+    background: var(--status-bg);
+    -webkit-app-region: drag;
+    user-select: none; flex-shrink: 0;
+  }
+  .title-info {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 12px; font-size: 12px;
+    flex: 1; min-width: 0;
+  }
+  .title-info .dot { flex-shrink: 0; }
+  .title-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .win-ctrls {
+    display: flex; height: 100%;
+    -webkit-app-region: no-drag;
+  }
+  .win-btn {
+    width: 36px; height: 100%;
+    border: none; background: none;
+    color: var(--text); font-size: 11px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .win-btn:hover { background: var(--bar-hover); }
+  .win-close:hover { background: #e81123; color: #fff; }
+  .pin-on { color: #F15A22; }
+  .pin-off { color: var(--text); }
+
+  .status-item { display: flex; align-items: center; gap: 4px; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dot-off); transition: background 0.3s;
+  }
+  .dot.on { background: var(--dot-on); }
+
+  #theme-btn {
+    background: none; border: none;
+    cursor: pointer;
+    padding: 2px 6px; border-radius: 4px;
+    display: flex; align-items: center;
+  }
+  #theme-btn:hover { background: var(--btn-hover); }
+  #theme-btn img { display: block; }
+
+  .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 10px; flex-shrink: 0;
+  }
+  #menu-btn {
+    background: none; border: none;
+    color: var(--text); font-size: 16px; cursor: pointer;
+    padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: background 0.15s;
+  }
+  #menu-btn:hover { background: var(--btn-hover); }
+
+  .settings-panel {
+    position: fixed; bottom: 40px; left: 10px;
+    background: rgba(20,20,30,0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,140,0,0.2);
+    border-radius: 14px; padding: 18px 20px;
+    min-width: 260px; z-index: 99;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+  .light .settings-panel {
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(0,0,0,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    color-scheme: light;
+  }
+  .settings-panel.hidden { display: none; }
+  .settings-panel .row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; gap: 12px; white-space: nowrap;
+  }
+  .settings-panel .row:last-child { margin-bottom: 0; }
+  .settings-panel .row span:first-child {
+    min-width: 70px; text-align: right; flex-shrink: 0;
+  }
+  .settings-panel input[type="number"] {
+    width: 56px; padding: 4px 8px;
+    background: var(--editor-bg); color: var(--text);
+    border: 1px solid var(--btn-hover); border-radius: 6px;
+    font-size: 12px; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .settings-panel input[type="number"]:focus {
+    border-color: #F15A22; outline: none;
+  }
+  .settings-panel select {
+    padding: 4px 6px;
+    background: var(--editor-bg); color: var(--text);
+    border: 1px solid var(--btn-hover); border-radius: 6px;
+    font-size: 12px;
+    transition: border-color 0.2s;
+  }
+  .settings-panel select:focus {
+    border-color: #F15A22; outline: none;
+  }
+  .settings-panel input[type="checkbox"] { accent-color: #F15A22; width: 15px; height: 15px; }
+  .settings-panel input[type="number"].sm { width: 42px; }
+  .settings-panel a {
+    color: var(--text); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .settings-panel a:hover { color: #F15A22; }
+  .settings-panel hr {
+    border: none; border-top: 1px solid var(--btn-hover);
+    margin: 6px 0;
+  }
+
+  #copy-status {
+    flex: 1; text-align: center; font-size: 11px;
+    color: var(--status-color); user-select: none;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    padding: 0 8px;
+  }
+
+  #editor {
+    width: 100%; flex: 1;
+    padding: 16px;
+    font-size: var(--font-size, 16px); font-family: var(--font-family, inherit); line-height: 1.6;
+    color: var(--text);
+    background: var(--editor-bg);
+    border: none; outline: none;
+    overflow-y: auto;
+    word-break: break-word;
+    transition: background 0.3s, color 0.3s;
+  }
+  #editor:empty::before {
+    content: "开始输入...";
+    color: var(--text-muted);
+  }
+  #editor img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 4px 0;
+  }
+
+  /* scrollbar */
+  #editor::-webkit-scrollbar { width: 6px; }
+  #editor::-webkit-scrollbar-track { background: transparent; }
+  #editor::-webkit-scrollbar-thumb {
+    background: var(--status-color); border-radius: 3px;
+  }
+  .light #editor::-webkit-scrollbar-thumb { background: #ccc; }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    transition: opacity 0.2s;
+  }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .qr-card {
+    background: #fff; padding: 28px 28px 18px; border-radius: 14px;
+    text-align: center; color: #333;
+  }
+  .qr-card img { display: block; width: 240px; height: 240px; }
+  .qr-card p { margin-top: 12px; font-size: 13px; }
+  .qr-hint { color: #aaa; font-size: 12px !important; margin-top: 4px !important; }
+</style>
+</head>
+<body>
+<div class="title-bar" id="title-bar">
+  <div class="title-info">
+    <span class="status-item" style="-webkit-app-region: no-drag; cursor: pointer;" id="ip-wrap"><span class="dot on" id="dot-server"></span><span id="txt-ip"></span></span>
+    <span class="status-item"><span class="dot" id="dot-phone"></span><span id="txt-phone">等待手机</span></span>
+  </div>
+  <div class="win-ctrls">
+    <button class="win-btn pin-on" id="btn-pin" title="取消置顶">
+      <svg width="14" height="15" viewBox="0 0 1024 1024"><path fill="currentColor" d="M878.3 392.1L631.9 145.7c-6.5-6.5-15-9.7-23.5-9.7s-17 3.2-23.5 9.7L423.8 306.9c-12.2-1.4-24.5-2-36.8-2-73.2 0-146.4 24.1-206.5 72.3a33.23 33.23 0 0 0-2.7 49.4l181.7 181.7-215.4 215.2a15.8 15.8 0 0 0-4.6 9.8l-3.4 37.2c-.9 9.4 6.6 17.4 15.9 17.4.5 0 1 0 1.5-.1l37.2-3.4c3.7-.3 7.2-2 9.8-4.6l215.4-215.4 181.7 181.7c6.5 6.5 15 9.7 23.5 9.7 9.7 0 19.3-4.2 25.9-12.4 56.3-70.3 79.7-158.3 70.2-243.4l161.1-161.1c12.9-12.8 12.9-33.8 0-46.8zM666.2 549.3l-24.5 24.5 3.8 34.4a259.92 259.92 0 0 1-30.4 153.9L262 408.8c12.9-7.1 26.3-13.1 40.3-17.9 27.2-9.4 55.7-14.1 84.7-14.1 9.6 0 19.3.5 28.9 1.6l34.4 3.8 24.5-24.5L608.5 224 800 415.5 666.2 549.3z"/></svg>
+    </button>
+    <button class="win-btn" id="btn-min" title="最小化">━</button>
+    <button class="win-btn" id="btn-max" title="最大化">☐</button>
+    <button class="win-btn win-close" id="btn-close" title="关闭">✕</button>
+  </div>
+</div>
+<div id="editor" contenteditable="true"></div>
+<div class="footer">
+  <div style="position: relative;">
+    <button id="menu-btn" title="设置">☰</button>
+    <div class="settings-panel hidden" id="settings-panel">
+      <div class="row"><span>字体大小</span><span><input type="number" id="set-font-size" min="12" max="32" step="1" value="16"></span></div>
+      <div class="row"><span>字体</span><select id="set-font-family"><option value="">默认</option><option value="Microsoft YaHei">微软雅黑</option><option value="SimSun">宋体</option><option value="KaiTi">楷体</option><option value="DengXian">等线</option><option value="Consolas">Consolas</option></select></div>
+      <div class="row"><span>自动复制</span><span><input type="checkbox" id="set-auto-copy"> 等待 <input type="number" id="set-copy-delay" min="1" max="10" step="1" value="2" class="sm"> 秒</span></div>
+      <div class="row"><span>开机自启</span><input type="checkbox" id="set-auto-start"></div>
+      <div class="row"><span>最小化到托盘</span><input type="checkbox" id="set-close-tray"></div>
+      <hr>
+      <div class="row"><a href="https://github.com/wjxjmj/syncinput" target="_blank">GitHub</a></div>
+      <div class="row"><a href="#" id="check-update">检查更新</a></div>
+    </div>
+  </div>
+  <span id="copy-status"></span>
+  <button id="theme-btn" title="切换亮色/暗色模式">
+    <img id="theme-icon" src="/moon.png" width="16" height="16" alt="主题切换">
+  </button>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="qr-card">
+    <img src="/qr" width="240" height="240" alt="QR">
+    <p id="qr-url"></p>
+    <p class="qr-hint">手机扫描二维码即可连接</p>
+  </div>
+</div>
+
+<script>
+const editor = document.getElementById("editor");
+const dotServer = document.getElementById("dot-server");
+const dotPhone = document.getElementById("dot-phone");
+const txtPhone = document.getElementById("txt-phone");
+const txtIp = document.getElementById("txt-ip");
+const themeBtn = document.getElementById("theme-btn");
+
+let syncing = false;
+let debounceTimer = null;
+let ws = null;
+
+// safe IPC wrapper — window.ipc only exists in wry WebView
+const sendIpc = (msg) => { if (window.ipc) window.ipc.postMessage(msg); };
+
+// hide title bar on mobile (no wry IPC = phone browser)
+if (!window.ipc) {
+  document.getElementById("title-bar").style.display = "none";
+}
+
+// show local IP in title bar
+txtIp.textContent = "__SYNCINPUT_IP__";
+
+// load config injected by server
+const CONFIG = __SYNCINPUT_CONFIG__;
+
+// settings menu
+const menuBtn = document.getElementById("menu-btn");
+const settingsPanel = document.getElementById("settings-panel");
+const setFontSize = document.getElementById("set-font-size");
+const setFontFamily = document.getElementById("set-font-family");
+const setAutoStart = document.getElementById("set-auto-start");
+const setCloseTray = document.getElementById("set-close-tray");
+
+menuBtn.onclick = (e) => {
+  e.stopPropagation();
+  settingsPanel.classList.toggle("hidden");
+};
+document.addEventListener("click", (e) => {
+  if (!settingsPanel.contains(e.target) && e.target !== menuBtn) {
+    settingsPanel.classList.add("hidden");
+  }
+});
+
+function saveSetting(key, value) {
+  localStorage.setItem(key, value);
+  sendIpc(`cfg:${key}:${value}`);
+}
+
+function initSetting(key, el, apply, cfgVal) {
+  const v = localStorage.getItem(key) || cfgVal;
+  if (v) { el.value = v; apply(v); }
+  el.addEventListener("change", () => {
+    const val = el.value;
+    saveSetting(key, val);
+    apply(val);
+  });
+}
+
+// apply initial config
+initSetting("fontSize", setFontSize, v => document.documentElement.style.setProperty("--font-size", v + "px"), String(CONFIG.font_size));
+initSetting("fontFamily", setFontFamily, v => document.documentElement.style.setProperty("--font-family", v || "inherit"), CONFIG.font_family);
+
+// auto-start
+setAutoStart.checked = CONFIG.auto_start;
+setAutoStart.onchange = () => saveSetting("autoStart", String(setAutoStart.checked));
+
+setCloseTray.checked = CONFIG.close_to_tray;
+setCloseTray.onchange = () => saveSetting("closeToTray", String(setCloseTray.checked));
+
+const themeIcon = document.getElementById("theme-icon");
+
+if (CONFIG.theme === "light") {
+  document.documentElement.classList.add("light");
+}
+
+function updateThemeIcon() {
+  const isLight = document.documentElement.classList.contains("light");
+  themeIcon.src = isLight ? "/moon.png" : "/sun.png";
+}
+updateThemeIcon();
+
+// theme toggle
+themeBtn.title = "切换亮色/暗色模式";
+themeBtn.onclick = () => {
+  const on = document.documentElement.classList.toggle("light");
+  saveSetting("theme", on ? "light" : "dark");
+  updateThemeIcon();
+};
+
+// check update
+document.getElementById("check-update").onclick = (e) => {
+  e.preventDefault();
+  window.open("https://github.com/wjxjmj/syncinput/releases", "_blank");
+};
+
+// ── auto-copy with fun status bar ──
+const copyStatus = document.getElementById("copy-status");
+const setAutoCopy = document.getElementById("set-auto-copy");
+const setCopyDelay = document.getElementById("set-copy-delay");
+
+const typingMsgs = [
+  "手指翻飞中... (・ω・)ノ",
+  "键盘高强度作业中，冒烟了快",
+  "捕捉到野生文字！(｀・ω・´)つ",
+  "灵感正在录入...",
+  "打字速度已达巅峰！",
+  "记录中，请勿打扰 (｀・ω・´)",
+  "SyncInput 检测到您正在输入...",
+  "收到！文字已入库（不是区块链）",
+  "打字这么快，你是八爪鱼吗 (⊙ω⊙)",
+  "这手速…阁下莫非是程序员？",
+  "已拦截你的文字，它们跑不掉了",
+  "正在把你的灵感变成剪贴板数据",
+  "确认存活，文字接收中 (・∀・)",
+];
+const cdMsgs = [
+  "秒后自动复制",
+  "秒后内容将被窃取... (・ω・)ゞ",
+  "秒后收入剪贴板",
+  "秒后开始搬运...",
+  "秒后你的文字就要上车了",
+  "秒后自动发货，无需邮费 (｀・ω・´)",
+];
+const doneMsgs = [
+  "复制成功！Ctrl+V 走你~ (｡•̀ᴗ-)✧",
+  "搞定！内容已就绪",
+  "已收入剪贴板，去粘贴吧",
+  "咻~ 剪贴板已更新",
+  "复制好了，快贴！",
+  "SyncInput 特快专递：您的文字已到站",
+  "自动复制已完成，请查收 (￣▽￣)ノ",
+  "Ctrl+V 就能看到我帮你保管的文字",
+  "不客气，这是我应该做的 (￣▽￣)ノ",
+];
+const noPhoneMsgs = [
+  "没看到左上角的 IP 地址吗？那么大！(╯°□°)╯",
+  "你得让手机和电脑连同一个 WiFi，笨蛋 (￣ω￣)",
+  "点一下那个 IP，扫个二维码不香吗？",
+  "微信扫一扫也能用哦，试试？",
+  "手机呢？还在兜里吗？掏出来扫一下啦~",
+  "二维码都给你画好了，扫一下嘛 (｡•ᴗ•｡)♡",
+  "同一个局域网，记住，同一个！(҂◡_◡)",
+  "左上角，点它！对就是那个地址！",
+  "手机还没连？我已经等得花都谢了 (╥﹏╥)",
+  "要不…拿手机出来扫个码？很快的 (・ω・)ノ",
+  "这个 IP 地址你看不顺眼吗？点它！",
+  "我准备好了，你手机准备好了吗？(◕‿◕)",
+  "浏览器扫码就能连，不用装 APP 哟~",
+  "我是 SyncInput，我的另一半（手机）在哪？",
+  "SyncInput 提醒您：手机还没上车呢",
+  "连上手机我才能发挥真正的实力！(｀・ω・´)",
+  "没有手机的我，就像没有薯条的可乐…",
+  "扫一下又不会怀孕 (￣ε￣*)",
+  "你该不会没有手机吧…开玩笑的",
+];
+let noPhoneIdx = 0;
+let noPhoneTimer = null;
+
+function startNoPhoneCycle() {
+  if (noPhoneTimer) return;
+  const tick = () => {
+    if (dotPhone.classList.contains("on")) return; // phone connected, stop
+    noPhoneIdx = (noPhoneIdx + 1) % noPhoneMsgs.length;
+    copyStatus.textContent = noPhoneMsgs[noPhoneIdx];
+    noPhoneTimer = setTimeout(tick, 5000 + Math.random() * 10000);
+  };
+  tick();
+}
+
+function stopNoPhoneCycle() {
+  if (noPhoneTimer) { clearTimeout(noPhoneTimer); noPhoneTimer = null; }
+}
+
+const idleTeaseMsgs = [
+  "手指断了吗？怎么不打了？(◞‸◟)",
+  "你的手机是不是也聋了？(´・ω・`)",
+  "右上角有颗小图钉，不想看到我就点掉它",
+  "空气突然安静…打几个字暖暖场？",
+  "我已经等了你好久了（托腮）(￣﹏￣)",
+  "键盘落灰了，擦擦顺便敲两下？",
+  "不会是在想今天中午吃什么吧？",
+  "你停我也停，咱俩比谁先动 (¬‿¬)",
+  "喂？SyncInput 呼叫用户，听到请回答",
+  "要不…再写点什么？我无聊得快长蘑菇了",
+  "你的灵感卡壳了吗？需要我假装思考吗 (￣～￣)",
+  "我不是在摸鱼，我是在等你 (◡‿◡✿)",
+  "空白的页面就像我空白的人生…",
+  "你再不打字我就要开始唱歌了 (´▽｀)ノ♪",
+  "我是 SyncInput，一个没人打字的输入框 (´；ω；`)",
+  "SyncInput 温馨提醒：长时间不输入会导致我抑郁",
+  "隔壁的输入框都收到 100 个字了…(；一_一)",
+  "你该不会去刷短视频了吧！(╬ Ò﹏Ó)",
+  "沉默是金，但打字是钻石",
+  "不如…用手机打几个字过来？",
+  "系统检测到：用户走神中 (。-`ω´-)",
+  "要不要开个自动复制找点乐子？",
+  "你的键盘它想你了 (´；ω；`)",
+];
+let idleTeaseIdx = 0;
+let idleTeaseTimer = null;
+
+function startIdleTease() {
+  if (idleTeaseTimer) return;
+  const tick = () => {
+    if (!dotPhone.classList.contains("on")) { idleTeaseTimer = null; return; }
+    const text = editor.textContent.trim();
+    if (text === lastContent || text === "") {
+      idleTeaseIdx = (idleTeaseIdx + 1) % idleTeaseMsgs.length;
+      copyStatus.textContent = idleTeaseMsgs[idleTeaseIdx];
+    }
+    idleTeaseTimer = setTimeout(tick, 5000 + Math.random() * 10000);
+  };
+  tick();
+}
+
+function stopIdleTease() {
+  if (idleTeaseTimer) { clearTimeout(idleTeaseTimer); idleTeaseTimer = null; }
+}
+
+const teaseMsgs = [
+  "手动复制多累啊，开个自动复制呗？(◕ᴗ◕)",
+  "你难道想自己 Ctrl+C 吗？这么勤快？",
+  "鼠标中键可以全选复制，试试？",
+  "要不…去设置里把自动复制打开？",
+  "我看你骨骼惊奇，适合开自动复制 (｀・ω・´)",
+  "滚轮按一下就能复制全部哦~",
+  "还在手动复制？隔壁老王的输入框都自动了",
+  "点一下菜单 → 自动复制，从此解放双手",
+  "复制这活儿，交给机器不好吗？",
+  "Ctrl+C 按多了键盘会疼的 (´；ω；`)",
+  "你打字的样子很美，但复制可以更优雅",
+  "已检测到人类手动复制行为（摇头）(￣▽￣*)",
+  "开自动复制吧，我帮你盯着 (・ω・)ゝ",
+  "中键复制了解一下？就在设置旁边！",
+  "我是 SyncInput，我赌你不敢开自动复制 (￣ω￣)",
+  "SyncInput 牌全自动复制机，用过都说好",
+  "你打字，我复制，分工明确不好吗？",
+  "Ctrl+C 是上世纪的产物了… (￣-￣)",
+  "你的手指不应该浪费在 Ctrl+C 上",
+  "人生苦短，开个自动复制吧",
+  "我闻到一股手动复制的…汗味？(￣ε￣)",
+  "开自动复制，我就告诉你一个秘密 (。-`ω´-)",
+  "连复制都手动，你是有多不信任我 (｀ε´)",
+];
+let teaseIdx = 0;
+
+const idleMsg = "就绪，等待输入...";
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+async function copyToClipboard(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); return true; }
+    catch { return false; }
+    finally { document.body.removeChild(ta); }
+  }
+}
+
+let autoCopyEnabled = CONFIG.auto_copy;
+let copyDelay = CONFIG.copy_delay;
+let idleTimer = null;
+let countdownTimer = null;
+let lastContent = "";
+
+function autoCopyState() {
+  const text = editor.textContent.trim();
+  if (!autoCopyEnabled) {
+    if (text && text !== lastContent) {
+      lastContent = text;
+      stopIdleTease();
+      teaseIdx = (teaseIdx + 1) % teaseMsgs.length;
+      copyStatus.textContent = teaseMsgs[teaseIdx];
+      idleTeaseTimer = setTimeout(startIdleTease, 5000 + Math.random() * 10000);
+    }
+    return;
+  }
+
+  if (text === lastContent) return;
+  stopIdleTease();
+  if (text === "") { copyStatus.textContent = idleMsg; startIdleTease(); return; }
+  lastContent = text;
+  clearTimeout(idleTimer);
+  clearInterval(countdownTimer);
+  copyStatus.textContent = pick(typingMsgs);
+  idleTimer = setTimeout(startCountdown, copyDelay * 1000);
+}
+
+function startCountdown() {
+  let remaining = copyDelay;
+  copyStatus.textContent = `已停止输入，${remaining}${pick(cdMsgs)}`;
+  countdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      doCopy();
+    } else {
+      copyStatus.textContent = `已停止输入，${remaining}${pick(cdMsgs)}`;
+    }
+  }, 1000);
+}
+
+async function doCopy() {
+  const text = editor.textContent.trim();
+  if (!text) return;
+  sendIpc(`copy:${text}`);
+  const ok = await copyToClipboard(text);
+  if (ok) {
+    copyStatus.textContent = pick(doneMsgs);
+  } else {
+    copyStatus.textContent = "复制失败，请手动 Ctrl+C";
+  }
+  setTimeout(() => { startIdleTease(); }, 5000 + Math.random() * 10000);
+}
+
+// load auto-copy settings
+function loadAutoCopy() {
+  const v = localStorage.getItem("autoCopy");
+  if (v !== null) { autoCopyEnabled = v === "true"; }
+  const d = localStorage.getItem("copyDelay");
+  if (d !== null) { copyDelay = parseInt(d) || 2; }
+  setAutoCopy.checked = autoCopyEnabled;
+  setCopyDelay.value = copyDelay;
+  copyStatus.textContent = noPhoneMsgs[0];
+  startNoPhoneCycle();
+}
+loadAutoCopy();
+
+setAutoCopy.onchange = () => {
+  autoCopyEnabled = setAutoCopy.checked;
+  saveSetting("autoCopy", String(autoCopyEnabled));
+  clearTimeout(idleTimer);
+  clearInterval(countdownTimer);
+  if (!autoCopyEnabled) {
+    if (!dotPhone.classList.contains("on")) {
+      stopIdleTease();
+      stopNoPhoneCycle();
+      startNoPhoneCycle();
+    } else {
+      stopIdleTease();
+      startIdleTease();
+    }
+  } else {
+    stopIdleTease();
+    if (dotPhone.classList.contains("on")) {
+      lastContent = "";
+      startIdleTease();
+    }
+  }
+};
+
+setCopyDelay.onchange = () => {
+  copyDelay = parseInt(setCopyDelay.value) || 2;
+  saveSetting("copyDelay", String(copyDelay));
+};
+
+// window controls via IPC
+const btnPin = document.getElementById("btn-pin");
+btnPin.onclick = () => {
+  const on = btnPin.classList.toggle("pin-on");
+  btnPin.classList.toggle("pin-off", !on);
+  btnPin.title = on ? "取消置顶" : "置顶";
+  sendIpc("pin");
+};
+document.getElementById("btn-min").onclick = () => sendIpc("min");
+document.getElementById("btn-max").onclick = () => sendIpc("max");
+document.getElementById("btn-close").onclick = () => sendIpc("close");
+
+// double-click title bar to maximize
+document.getElementById("title-bar").addEventListener("dblclick", e => {
+  if (e.target.closest(".win-ctrls")) return;
+  sendIpc("max");
+});
+
+// QR code overlay
+const ipWrap = document.getElementById("ip-wrap");
+ipWrap.title = "点击显示二维码";
+ipWrap.onclick = (e) => {
+  e.stopPropagation();
+  document.getElementById("qr-url").textContent = txtIp.textContent;
+  document.getElementById("overlay").classList.remove("hidden");
+};
+document.getElementById("overlay").onclick = e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden");
+};
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+
+  ws.onopen = () => { dotServer.className = "dot on"; };
+
+  ws.onclose = () => {
+    dotServer.className = "dot";
+    dotPhone.className = "dot";
+    txtPhone.textContent = "已断开";
+    setTimeout(connect, 2000);
+  };
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "content") {
+      syncing = true;
+      editor.innerHTML = msg.data;
+      syncing = false;
+      autoCopyState();
+    } else if (msg.type === "clients") {
+      if (msg.count >= 2) {
+        dotPhone.className = "dot on";
+        txtPhone.textContent = "手机已连接";
+        stopNoPhoneCycle();
+        startIdleTease();
+        document.getElementById("overlay").classList.add("hidden");
+      } else {
+        dotPhone.className = "dot";
+        txtPhone.textContent = "等待手机";
+        stopIdleTease();
+        if (!noPhoneTimer) {
+          copyStatus.textContent = noPhoneMsgs[0];
+          startNoPhoneCycle();
+        }
+      }
+    }
+  };
+}
+
+function sendSync() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "content", data: editor.innerHTML }));
+  }
+}
+
+editor.addEventListener("keyup", () => {
+  if (syncing) return;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(sendSync, 200);
+  autoCopyState();
+});
+
+editor.addEventListener("paste", e => {
+  const items = e.clipboardData.items;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.createElement("img");
+        img.src = reader.result;
+        insertAtCursor(img);
+        sendSync(); autoCopyState();
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }
+});
+
+editor.addEventListener("drop", e => {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  for (const file of files) {
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.createElement("img");
+        img.src = reader.result;
+        insertAtCursor(img);
+        sendSync(); autoCopyState();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+});
+
+editor.addEventListener("dragover", e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+
+function insertAtCursor(node) {
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    editor.appendChild(node);
+  }
+}
+
+connect();
+
+// middle-click on editor to select-all and copy
+editor.addEventListener("auxclick", e => {
+  if (e.button !== 1) return;
+  const text = editor.textContent.trim();
+  if (!text) return;
+  e.preventDefault();
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  sendIpc(`copy:${text}`);
+  copyToClipboard(text).then(ok => {
+    copyStatus.textContent = ok ? "已复制全部！Ctrl+V 走你~" : "复制失败";
+    setTimeout(() => { copyStatus.textContent = autoCopyEnabled ? idleMsg : ""; }, 3000);
+  });
+});
+</script>
+</body>
+</html>
