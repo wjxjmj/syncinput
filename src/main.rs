@@ -40,6 +40,7 @@ struct Config {
     height: u32,
     auto_start: bool,
     close_to_tray: bool,
+    accent: String,
 }
 
 impl Default for Config {
@@ -54,6 +55,7 @@ impl Default for Config {
             height: 600,
             auto_start: false,
             close_to_tray: false,
+            accent: "#FA7F51".into(),
         }
     }
 }
@@ -385,6 +387,7 @@ fn main() {
                                     cfg.close_to_tray = v == "true";
                                     ctt.store(cfg.close_to_tray, Ordering::Relaxed);
                                 }
+                                "accent" => cfg.accent = v.to_string(),
                                 _ => {}
                             }
                             save_config(&cfg);

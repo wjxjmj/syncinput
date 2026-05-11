@@ -6,14 +6,13 @@
 <title>SyncInput</title>
 <style>
   :root {
+    --accent: var(--accent);
     --body-bg: #000;
     --status-bg: #0a0a0a;
     --editor-bg: #000;
     --text: #e0e0e0;
     --text-muted: #555;
-    --status-color: #ff8c00;
     --dot-off: #444;
-    --dot-on: #4ecca3;
     --btn-hover: #1a1a1a;
     --bar-hover: #1a1a1a;
   }
@@ -23,9 +22,7 @@
     --editor-bg: #ffffff;
     --text: #1a1a2e;
     --text-muted: #aaa;
-    --status-color: #999;
     --dot-off: #bbb;
-    --dot-on: #4ecca3;
     --btn-hover: #ccc;
     --bar-hover: #d4d4dc;
   }
@@ -68,7 +65,7 @@
   }
   .win-btn:hover { background: var(--bar-hover); }
   .win-close:hover { background: #e81123; color: #fff; }
-  .pin-on { color: #F15A22; }
+  .pin-on { color: var(--accent); }
   .pin-off { color: var(--text); }
 
   .status-item { display: flex; align-items: center; gap: 4px; }
@@ -76,7 +73,7 @@
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--dot-off); transition: background 0.3s;
   }
-  .dot.on { background: var(--dot-on); }
+  .dot.on { background: var(--accent); }
 
   #theme-btn {
     background: none; border: none;
@@ -136,7 +133,7 @@
     transition: border-color 0.2s;
   }
   .settings-panel input[type="number"]:focus {
-    border-color: #F15A22; outline: none;
+    border-color: var(--accent); outline: none;
   }
   .settings-panel select {
     padding: 4px 6px;
@@ -146,15 +143,15 @@
     transition: border-color 0.2s;
   }
   .settings-panel select:focus {
-    border-color: #F15A22; outline: none;
+    border-color: var(--accent); outline: none;
   }
-  .settings-panel input[type="checkbox"] { accent-color: #F15A22; width: 15px; height: 15px; }
+  .settings-panel input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
   .settings-panel input[type="number"].sm { width: 42px; }
   .settings-panel a {
     color: var(--text); text-decoration: none;
     transition: color 0.2s;
   }
-  .settings-panel a:hover { color: #F15A22; }
+  .settings-panel a:hover { color: var(--accent); }
   .settings-panel hr {
     border: none; border-top: 1px solid var(--btn-hover);
     margin: 6px 0;
@@ -162,7 +159,7 @@
 
   #copy-status {
     flex: 1; text-align: center; font-size: 11px;
-    color: var(--status-color); user-select: none;
+    color: var(--accent); user-select: none;
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     padding: 0 8px;
   }
@@ -192,7 +189,7 @@
   #editor::-webkit-scrollbar { width: 6px; }
   #editor::-webkit-scrollbar-track { background: transparent; }
   #editor::-webkit-scrollbar-thumb {
-    background: var(--status-color); border-radius: 3px;
+    background: var(--accent); border-radius: 3px;
   }
   .light #editor::-webkit-scrollbar-thumb { background: #ccc; }
 
@@ -238,6 +235,7 @@
       <div class="row"><span>自动复制</span><span><input type="checkbox" id="set-auto-copy"> 等待 <input type="number" id="set-copy-delay" min="1" max="10" step="1" value="2" class="sm"> 秒</span></div>
       <div class="row"><span>开机自启</span><input type="checkbox" id="set-auto-start"></div>
       <div class="row"><span>最小化到托盘</span><input type="checkbox" id="set-close-tray"></div>
+      <div class="row"><span>主题色</span><span><input type="color" id="set-accent" value="#FA7F51" style="width:32px;height:22px;border:none;border-radius:4px;cursor:pointer;"></span></div>
       <hr>
       <div class="row"><a href="https://github.com/wjxjmj/syncinput" target="_blank">GitHub</a></div>
       <div class="row"><a href="#" id="check-update">检查更新</a></div>
@@ -290,6 +288,7 @@ const setFontSize = document.getElementById("set-font-size");
 const setFontFamily = document.getElementById("set-font-family");
 const setAutoStart = document.getElementById("set-auto-start");
 const setCloseTray = document.getElementById("set-close-tray");
+const setAccent = document.getElementById("set-accent");
 
 menuBtn.onclick = (e) => {
   e.stopPropagation();
@@ -326,6 +325,13 @@ setAutoStart.onchange = () => saveSetting("autoStart", String(setAutoStart.check
 
 setCloseTray.checked = CONFIG.close_to_tray;
 setCloseTray.onchange = () => saveSetting("closeToTray", String(setCloseTray.checked));
+
+setAccent.value = CONFIG.accent || "#FA7F51";
+document.documentElement.style.setProperty("--accent", setAccent.value);
+setAccent.onchange = () => {
+  document.documentElement.style.setProperty("--accent", setAccent.value);
+  saveSetting("accent", setAccent.value);
+};
 
 const themeIcon = document.getElementById("theme-icon");
 
