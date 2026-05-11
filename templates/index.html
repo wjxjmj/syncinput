@@ -407,9 +407,27 @@ themeBtn.onclick = () => {
 };
 
 // check update
-document.getElementById("check-update").onclick = (e) => {
+document.getElementById("check-update").onclick = async (e) => {
   e.preventDefault();
-  window.open("https://github.com/wjxjmj/syncinput/releases", "_blank");
+  const curVer = "__SYNCINPUT_VERSION__";
+  try {
+    const resp = await fetch("https://api.github.com/repos/wjxjmj/syncinput/releases/latest");
+    const json = await resp.json();
+    const latest = (json.tag_name || "").replace(/^v/, "");
+    if (latest && latest !== curVer) {
+      copyStatus.textContent = `发现新版本 v${latest}，当前 v${curVer}，请前往 GitHub 下载`;
+      window.open(json.html_url, "_blank");
+    } else {
+      copyStatus.textContent = `已是最新版本 v${curVer} (´ω｀)`;
+    }
+  } catch {
+    copyStatus.textContent = "检查更新失败，请稍后重试";
+  }
+  setTimeout(() => {
+    if (copyStatus.textContent.startsWith("已是最新") || copyStatus.textContent.startsWith("检查更新失败") || copyStatus.textContent.startsWith("发现新版本")) {
+      copyStatus.textContent = autoCopyEnabled ? idleMsg : "";
+    }
+  }, 6000);
 };
 
 // ── auto-copy with fun status bar ──

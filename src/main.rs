@@ -165,6 +165,7 @@ async fn index() -> impl IntoResponse {
     let config = load_config();
     let html = include_str!("../templates/index.html")
         .replace("__SYNCINPUT_IP__", &format!("{}:5200", ip))
+        .replace("__SYNCINPUT_VERSION__", env!("CARGO_PKG_VERSION"))
         .replace(
             "__SYNCINPUT_CONFIG__",
             &serde_json::to_string(&config).unwrap(),
