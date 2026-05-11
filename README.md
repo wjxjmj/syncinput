@@ -6,6 +6,10 @@
 
 双击 `syncinput.exe`，手机连同一 WiFi 后扫描二维码或浏览器访问显示的 IP 地址即可连接。
 
+## 截图
+
+![SyncInput 截图](screenshot.png)
+
 ## 致谢
 
 - 应用图标：箭头 方向 旋转 同步图标 by Colourcreatype on [Icon-Icons.com](https://icon-icons.com/zh/authors/1173-colourcreatype)
