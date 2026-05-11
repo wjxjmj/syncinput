@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use std::net::{TcpStream, UdpSocket};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
