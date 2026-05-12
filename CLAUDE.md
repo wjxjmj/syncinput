@@ -33,3 +33,13 @@ Windows 首次使用需放行防火墙端口：
 ```
 netsh advfirewall firewall add rule name="SyncInput" dir=in action=allow protocol=TCP localport=5200 enable=yes
 ```
+
+## Android 悬浮球
+
+`android/` 目录下是 Kotlin 项目，用 Android Studio 打开即可编译。
+
+- **MainActivity** — 请求悬浮窗权限，启动 FloatingService
+- **FloatingService** — 悬浮球 + WebView 面板，可拖拽，点击展开/收起
+- WebView 加载 `http://<电脑IP>:5200`
+
+首次使用需修改 `FloatingService.kt` 中的服务器 IP 地址。
