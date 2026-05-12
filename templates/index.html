@@ -6,7 +6,8 @@
 <title>SyncInput</title>
 <style>
   :root {
-    --accent: var(--accent);
+    --accent: #FA7F51;
+    --accent-hot: #E04000;
     --body-bg: #000;
     --status-bg: #0a0a0a;
     --editor-bg: #000;
@@ -15,6 +16,7 @@
     --dot-off: #444;
     --btn-hover: #1a1a1a;
     --bar-hover: #1a1a1a;
+    --bubble-text: #000;
   }
   .light {
     --body-bg: #f0f0f5;
@@ -25,11 +27,13 @@
     --dot-off: #bbb;
     --btn-hover: #ccc;
     --bar-hover: #d4d4dc;
+    --bubble-text: #222;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
   body {
+    min-height: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--body-bg);
     display: flex; flex-direction: column;
@@ -45,26 +49,33 @@
     user-select: none; flex-shrink: 0;
   }
   .title-info {
-    display: flex; align-items: center; gap: 10px;
-    padding: 0 12px; font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 6px; font-size: 12px;
     flex: 1; min-width: 0;
   }
   .title-info .dot { flex-shrink: 0; }
-  .title-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
+  .title-info .status-item {
+    display: flex; align-items: center; gap: 3px;
+    flex: 1 1 0; min-width: 0; overflow: hidden;
+  }
+  .title-info .status-item .dot { flex-shrink: 0; }
+  .title-info .status-item span:last-child {
+    white-space: nowrap; overflow: hidden; text-overflow: clip;
+    min-width: 0; max-width: 100%;
+  }
   .win-ctrls {
-    display: flex; height: 100%;
+    display: flex; height: 100%; flex-shrink: 0;
     -webkit-app-region: no-drag;
   }
   .win-btn {
-    width: 36px; height: 100%;
+    min-width: 24px; width: 24px; height: 100%;
     border: none; background: none;
     color: var(--text); font-size: 11px;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
+    transition: background 0.15s; padding: 0;
   }
   .win-btn:hover { background: var(--bar-hover); }
-  .win-close:hover { background: #e81123; color: #fff; }
+  .win-close:hover { background: var(--accent-hot); color: #fff; }
   .pin-on { color: var(--accent); }
   .pin-off { color: var(--text); }
 
@@ -97,13 +108,13 @@
   #menu-btn:hover { background: var(--btn-hover); }
 
   .settings-panel {
-    position: fixed; bottom: 40px; left: 10px;
+    position: fixed; bottom: 40px; left: 10px; top: 10px;
     background: rgba(20,20,30,0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255,140,0,0.2);
     border-radius: 14px; padding: 18px 20px;
-    min-width: 260px; z-index: 99;
+    min-width: 260px; max-height: 90vh; overflow-y: auto; z-index: 99;
     font-size: 13px; color: var(--text);
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     color-scheme: dark;
@@ -156,6 +167,12 @@
     border: none; border-top: 1px solid var(--btn-hover);
     margin: 6px 0;
   }
+  .settings-panel::-webkit-scrollbar { width: 5px; }
+  .settings-panel::-webkit-scrollbar-track { background: transparent; }
+  .settings-panel::-webkit-scrollbar-thumb {
+    background: var(--accent); border-radius: 3px;
+  }
+  .light .settings-panel::-webkit-scrollbar-thumb { background: #ccc; }
 
   #copy-status {
     flex: 1; text-align: center; font-size: 11px;
@@ -170,7 +187,7 @@
     display: none; flex: 1; overflow-y: auto;
     padding: 10px 12px;
   }
-  #input-wrap { display: flex; flex-direction: column; flex: 1; }
+  #input-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   #btn-send { display: none; }
   .chat-mode #chat-area { display: block; }
   .chat-mode #input-wrap {
@@ -203,14 +220,14 @@
     border-bottom-left-radius: 4px;
   }
   .bubble.right {
-    background: color-mix(in srgb, var(--accent) 55%, white); color: #fff;
+    background: color-mix(in srgb, var(--accent) 25%, var(--editor-bg)); color: var(--bubble-text);
     margin-left: auto;
     border-bottom-right-radius: 4px;
   }
   .bubble img { max-width: 100%; border-radius: 4px; }
 
   #editor {
-    width: 100%; flex: 1;
+    width: 100%; flex: 1; min-height: 0;
     padding: 16px;
     font-size: var(--font-size, 16px); font-family: var(--font-family, inherit); line-height: 1.6;
     color: var(--text);
@@ -247,11 +264,12 @@
   }
   .overlay.hidden { opacity: 0; pointer-events: none; }
   .qr-card {
-    background: #fff; padding: 28px 28px 18px; border-radius: 14px;
+    background: #fff; padding: 5vmin 5vmin 3vmin; border-radius: 14px;
     text-align: center; color: #333;
+    max-width: 85vmin; max-height: 85vmin; overflow: hidden;
   }
-  .qr-card img { display: block; width: 240px; height: 240px; }
-  .qr-card p { margin-top: 12px; font-size: 13px; }
+  .qr-card img { display: block; margin: 0 auto; width: 65vmin; height: 65vmin; max-width: 240px; max-height: 240px; }
+  .qr-card p { margin-top: 1.5vmin; font-size: clamp(10px, 2.2vmin, 13px); }
   .qr-hint { color: #aaa; font-size: 12px !important; margin-top: 4px !important; }
 </style>
 </head>
@@ -286,11 +304,13 @@
       <div class="row"><span>字体大小</span><span><input type="number" id="set-font-size" min="12" max="32" step="1" value="16"></span></div>
       <div class="row"><span>字体</span><select id="set-font-family"><option value="">默认</option><option value="Microsoft YaHei">微软雅黑</option><option value="SimSun">宋体</option><option value="KaiTi">楷体</option><option value="DengXian">等线</option><option value="Consolas">Consolas</option></select></div>
       <div class="row"><span>自动复制</span><span><input type="checkbox" id="set-auto-copy"> 等待 <input type="number" id="set-copy-delay" min="1" max="10" step="1" value="2" class="sm"> 秒</span></div>
+      <div class="row"><span>闪烁时长</span><span><input type="number" id="set-flash-dur" min="-1" max="120" step="1" value="-1" class="sm" disabled> 秒</span></div>
+      <div class="row" style="margin-top:-8px;padding-left:82px;justify-content:flex-start;font-size:11px;color:var(--text-muted);">-1=一直闪烁, 0=不闪烁</div>
       <div class="row"><span>开机自启</span><input type="checkbox" id="set-auto-start"></div>
       <div class="row"><span>最小化到托盘</span><input type="checkbox" id="set-close-tray"></div>
       <div class="row"><span>主题色</span><span><input type="color" id="set-accent" value="#FA7F51" style="width:32px;height:22px;border:none;border-radius:4px;cursor:pointer;"></span></div>
       <hr>
-      <div class="row"><a href="https://github.com/wjxjmj/syncinput" target="_blank">GitHub</a></div>
+      <div class="row"><a href="#" id="gh-link">GitHub</a></div>
       <div class="row"><a href="#" id="check-update">检查更新</a></div>
     </div>
   </div>
@@ -330,6 +350,7 @@ if (!window.ipc) {
 
 // show local IP in title bar
 txtIp.textContent = "__SYNCINPUT_IP__";
+
 
 // load config injected by server
 const CONFIG = __SYNCINPUT_CONFIG__;
@@ -379,10 +400,33 @@ setAutoStart.onchange = () => saveSetting("autoStart", String(setAutoStart.check
 setCloseTray.checked = CONFIG.close_to_tray;
 setCloseTray.onchange = () => saveSetting("closeToTray", String(setCloseTray.checked));
 
+function updateAccent(hex) {
+  document.documentElement.style.setProperty("--accent", hex);
+  // compute bubble text: black if accent is bright, white if dark
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const gv = Math.round((1 - lum) * 255);
+  document.documentElement.style.setProperty("--bubble-text", `rgb(${gv},${gv},${gv})`);
+  // saturated variant for close button hover
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  const s = max === 0 ? 0 : (max - min) / max;
+  let sr = r, sg = g, sb = b;
+  if (s < 1) {
+    const f = (1 - s) / s;
+    sr = Math.round(r + (r - max) * f);
+    sg = Math.round(g + (g - max) * f);
+    sb = Math.round(b + (b - max) * f);
+  }
+  const satHex = '#' + [sr,sg,sb].map(v => Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
+  document.documentElement.style.setProperty("--accent-hot", satHex);
+}
+
 setAccent.value = CONFIG.accent || "#FA7F51";
-document.documentElement.style.setProperty("--accent", setAccent.value);
+updateAccent(setAccent.value);
 setAccent.onchange = () => {
-  document.documentElement.style.setProperty("--accent", setAccent.value);
+  updateAccent(setAccent.value);
   saveSetting("accent", setAccent.value);
 };
 
@@ -407,6 +451,11 @@ themeBtn.onclick = () => {
 };
 
 // check update
+document.getElementById("gh-link").onclick = (e) => {
+  e.preventDefault();
+  sendIpc("open:https://github.com/wjxjmj/syncinput");
+};
+
 document.getElementById("check-update").onclick = async (e) => {
   e.preventDefault();
   const curVer = "__SYNCINPUT_VERSION__";
@@ -416,7 +465,7 @@ document.getElementById("check-update").onclick = async (e) => {
     const latest = (json.tag_name || "").replace(/^v/, "");
     if (latest && latest !== curVer) {
       copyStatus.textContent = `发现新版本 v${latest}，当前 v${curVer}，请前往 GitHub 下载`;
-      window.open(json.html_url, "_blank");
+      sendIpc(`open:${json.html_url}`);
     } else {
       copyStatus.textContent = `已是最新版本 v${curVer} (´ω｀)`;
     }
@@ -434,6 +483,7 @@ document.getElementById("check-update").onclick = async (e) => {
 const copyStatus = document.getElementById("copy-status");
 const setAutoCopy = document.getElementById("set-auto-copy");
 const setCopyDelay = document.getElementById("set-copy-delay");
+const setFlashDur = document.getElementById("set-flash-dur");
 
 const typingMsgs = [
   "手指翻飞中... (・ω・)ノ",
@@ -663,6 +713,9 @@ function loadAutoCopy() {
   if (d !== null) { copyDelay = parseInt(d) || 2; }
   setAutoCopy.checked = autoCopyEnabled;
   setCopyDelay.value = copyDelay;
+  setFlashDur.value = CONFIG.flash_duration ?? -1;
+  setFlashDur.disabled = !autoCopyEnabled;
+  setFlashDur.onchange = () => saveSetting("flashDuration", setFlashDur.value);
   copyStatus.textContent = noPhoneMsgs[0];
   startNoPhoneCycle();
 }
@@ -671,6 +724,7 @@ loadAutoCopy();
 setAutoCopy.onchange = () => {
   autoCopyEnabled = setAutoCopy.checked;
   saveSetting("autoCopy", String(autoCopyEnabled));
+  setFlashDur.disabled = !autoCopyEnabled;
   clearTimeout(idleTimer);
   clearInterval(countdownTimer);
   if (!autoCopyEnabled) {

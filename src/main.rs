@@ -2,6 +2,7 @@
 
 use fs2::FileExt;
 use std::net::{TcpStream, UdpSocket};
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -41,21 +42,23 @@ struct Config {
     auto_start: bool,
     close_to_tray: bool,
     accent: String,
+    flash_duration: i32,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
             theme: "light".into(),
-            font_size: 16,
-            font_family: String::new(),
-            auto_copy: false,
+            font_size: 18,
+            font_family: "SimSun".into(),
+            auto_copy: true,
             copy_delay: 2,
             width: 400,
-            height: 600,
-            auto_start: false,
-            close_to_tray: false,
+            height: 520,
+            auto_start: true,
+            close_to_tray: true,
             accent: "#FA7F51".into(),
+            flash_duration: 5,
         }
     }
 }
@@ -320,6 +323,7 @@ fn main() {
     let muda_menu_rx = MenuEvent::receiver();
 
     let flash_active = Arc::new(AtomicBool::new(false));
+    let flash_deadline = Arc::new(std::sync::Mutex::new(None::<Instant>));
     let last_copied = Arc::new(std::sync::Mutex::new(String::new()));
 
     let close_to_tray = Arc::new(AtomicBool::new(cfg.close_to_tray));
@@ -331,6 +335,7 @@ fn main() {
             .with_decorations(false)
             .with_always_on_top(true)
             .with_window_icon(window_icon)
+            .with_min_inner_size(LogicalSize::new(140.0, 128.0))
             .with_inner_size(LogicalSize::new(cfg.width as f64, cfg.height as f64))
             .build(&event_loop)
             .unwrap(),
@@ -340,6 +345,7 @@ fn main() {
     let p = pinned.clone();
     let w = window.clone();
     let fa = flash_active.clone();
+    let fd2 = flash_deadline.clone();
     let lc = last_copied.clone();
     let _webview = wry::WebViewBuilder::new()
         .with_url("http://127.0.0.1:5200")
@@ -362,13 +368,26 @@ fn main() {
                         std::process::exit(0);
                     }
                 }
+                s if s.starts_with("open:") => {
+                    let url = s.strip_prefix("open:").unwrap_or("");
+                    let _ = std::process::Command::new("cmd")
+                        .args(["/c", "start", "", url])
+                        .creation_flags(0x08000000)
+                        .spawn();
+                }
                 s if s.starts_with("copy:") => {
                     let text = s.strip_prefix("copy:").unwrap_or("");
                     if let Ok(mut cb) = Clipboard::new() {
                         let _ = cb.set_text(text);
                     }
                     *lc.lock().unwrap() = text.to_string();
-                    if !w.is_visible() {
+                    let cfg = load_config();
+                    if !w.is_visible() && cfg.flash_duration != 0 {
+                        *flash_deadline.lock().unwrap() = if cfg.flash_duration > 0 {
+                            Some(Instant::now() + Duration::from_secs(cfg.flash_duration as u64))
+                        } else {
+                            None
+                        };
                         fa.store(true, Ordering::Relaxed);
                     }
                 }
@@ -404,6 +423,9 @@ fn main() {
                                     ctt.store(cfg.close_to_tray, Ordering::Relaxed);
                                 }
                                 "accent" => cfg.accent = v.to_string(),
+                                "flashDuration" => {
+                                    if let Ok(n) = v.parse::<i32>() { cfg.flash_duration = n; }
+                                }
                                 _ => {}
                             }
                             save_config(&cfg);
@@ -423,15 +445,24 @@ fn main() {
     let tr = tray.clone();
     let nr = normal_rgba.clone();
     let lc = last_copied.clone();
+    let fa2 = flash_active.clone();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(50));
 
         // flash tray icon by showing/hiding (like WeChat)
-        if flash_active.load(Ordering::Relaxed) {
+        if fa2.load(Ordering::Relaxed) {
             let now = Instant::now();
 
+            // check deadline
+            if let Some(deadline) = *fd2.lock().unwrap() {
+                if now >= deadline {
+                    fa2.store(false, Ordering::Relaxed);
+                    let _ = tr.set_icon(Some(TrayIcon::from_rgba((*nr).clone(), icon_w, icon_h).unwrap()));
+                }
+            }
+
             // check clipboard: stop flash if content changed (user copied something else)
-            if now.duration_since(*last_clip_check.borrow()) > Duration::from_millis(800) {
+            if fa2.load(Ordering::Relaxed) && now.duration_since(*last_clip_check.borrow()) > Duration::from_millis(800) {
                 *last_clip_check.borrow_mut() = now;
                 if let Ok(mut cb) = Clipboard::new() {
                     if let Ok(current) = cb.get_text() {
